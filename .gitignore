@@ -1,0 +1,9 @@
+.venv
+.pyenv
+.ipynb_checkpoints
+
+build/
+
+.env
+
+*.pkl
