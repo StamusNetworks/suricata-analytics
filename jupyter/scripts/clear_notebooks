@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -e
+
+for d in "$@"; do
+  for f in $(find ${d} -type f -name "*.ipynb"); do
+    jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace ${f}
+  done
+done
