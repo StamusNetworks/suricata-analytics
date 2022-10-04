@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ARG WHEEL_DIST="/tmp/wheels"
 
-FROM python:3.9-slim-bullseye as builder
+FROM python:3.10-slim-bullseye as builder
 ARG WHEEL_DIST
 
 RUN apt-get update && \
@@ -25,7 +25,7 @@ COPY . /src
 WORKDIR /src
 RUN python3 -m pip wheel -w "${WHEEL_DIST}" .
 
-FROM jupyter/scipy-notebook
+FROM jupyter/scipy-notebook:ubuntu-22.04
 
 LABEL maintainer="Stamus Networks oss@stamus-networks.com"
 
