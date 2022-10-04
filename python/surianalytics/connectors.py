@@ -84,21 +84,8 @@ class RESTSciriusConnector():
     def get_event_types(self) -> list:
         """
         Out: list of event types from Scirius REST API
-
-        Uses existing graph_agg endpoint rather than dedicated API, we simply use event_type as
-        source field and ignore the destination. Destination agg is also on purpose 1 to reduce
-        query load.
         """
-        data = self.get_data("rest/rules/es/graph_agg/", qParams={
-            "col_src": "event_type",
-            "size_src": 25,
-            "size_dest": 1,
-        }, ignore_time=True)
-        tx = []
-        for n in data["graph"]["nodes"]:
-            if n["kind"] == "source":
-                tx.append(n["index"])
-        return sorted(tx)
+        return list(self.get_eve_unique_values(counts="no", field="event_type"))
 
     def get_eve_fields_graph_nx(self, **kwargs) -> nx.Graph:
         data = self.get_eve_fields_graph(**kwargs)
