@@ -139,9 +139,23 @@ class RESTSciriusConnector():
             raise requests.RequestException(resp)
         return json.loads(resp.text)
 
-    def set_query_timeframe(self, from_date: str, to_date: str) -> object:
-        self.from_date = int(datetime.fromisoformat(from_date).strftime('%s')) * 1000
-        self.to_date = int(datetime.fromisoformat(to_date).strftime('%s')) * 1000
+    def set_query_timeframe(self, from_date, to_date) -> object:
+        if isinstance(from_date, str):
+            from_date = datetime.fromisoformat(from_date)
+        elif from_date is None:
+            from_date = datetime.utcnow() - timedelta(days=30)
+
+        if isinstance(to_date, str):
+            to_date = datetime.fromisoformat(to_date)
+        elif to_date is None:
+            to_date = datetime.utcnow()
+
+        if from_date.date() > to_date.date():
+            raise ValueError("Timespan beginning must be before the end")
+
+        self.from_date = int(from_date.strftime('%s')) * 1000
+        self.to_date = int(to_date.strftime('%s')) * 1000
+
         return self
 
     def set_query_delta(self, hours=0, minutes=0) -> object:
