@@ -130,7 +130,7 @@ class RESTSciriusConnector():
         """
         data = self.get_data(api="rest/rules/es/unique_fields/", qParams={
             "event_type": event_type
-        } if event_type not in (None, "all") else None, ignore_time=True)
+        } if event_type not in (None, "all") else None, ignore_time=False)
         return data.get("fields", [])
 
     def get_data(self, api: str, qParams=None, ignore_time=False):
