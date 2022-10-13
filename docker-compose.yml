@@ -11,6 +11,8 @@ services:
     container_name: stamus_jupyter
     image: stamus/jupyter:${TAG:-latest}
     restart: ${RESTART_MODE:-no}
+    environment:
+      SCIRIUS_ENVFILE_IN_HOME: yes
     volumes:
       - ${PWD}/.env:/home/jovyan/.env:ro
       - ${PWD}:/home/jovyan/work:rw

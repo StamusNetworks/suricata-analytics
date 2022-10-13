@@ -28,7 +28,11 @@ import urllib.parse
 import networkx as nx
 import pandas as pd
 
+from dotenv import dotenv_values
 from datetime import datetime, timedelta
+
+# Search for scirius env file in user home rather than local folder
+KEY_ENV_IN_HOME = "SCIRIUS_ENVFILE_IN_HOME"
 
 KEY_ENDPOINT = "SCIRIUS_HOST"
 KEY_TOKEN = "SCIRIUS_TOKEN"
@@ -48,38 +52,31 @@ class RESTSciriusConnector():
     page_size = 1000
 
     def __init__(self, **kwargs) -> None:
-        self.endpoint = "127.0.0.1"
-        self.token = None
-        self.tls = True
-        self.tls_verify = True
+        env_in_home = os.environ.get(KEY_ENV_IN_HOME, "no")
+        self.__env_file = ".env"
+        if check_str_bool(env_in_home):
+            self.__env_file = os.path.join(os.path.expanduser("~"),
+                                           self.__env_file)
 
-        if KEY_ENDPOINT in kwargs:
-            self.endpoint = kwargs[KEY_ENDPOINT]
-        elif KEY_ENDPOINT in os.environ:
-            self.endpoint = os.environ[KEY_ENDPOINT]
-        elif os.path.exists(env_file()):
-            self.endpoint = load_param_from_env_file(KEY_ENDPOINT)
+        config = {
+            **os.environ,
+            **dotenv_values(self.__env_file),
+        }
 
-        if KEY_TOKEN in kwargs and KEY_TOKEN is not None:
-            self.token = kwargs[KEY_TOKEN]
-        elif KEY_TOKEN in os.environ:
-            # This is a conveniece feature for testing and lab setups, use mapped env file instead
-            self.token = os.environ[KEY_TOKEN]
-        elif os.path.exists(env_file()):
-            self.token = load_param_from_env_file(KEY_TOKEN)
-        else:
+        self.endpoint = kwargs.get(KEY_ENDPOINT.lower(),
+                                   config.get(KEY_ENDPOINT,
+                                              "127.0.0.1"))
+        self.token = kwargs.get(KEY_TOKEN.lower(),
+                                config.get(KEY_TOKEN,
+                                           None))
+        self.tls_verify = kwargs.get(KEY_TLS_VERIFY.lower(),
+                                     config.get(KEY_TLS_VERIFY,
+                                                "yes"))
+        self.tls_verify = check_str_bool(self.tls_verify)
+        self.tls_verify = "/etc/ssl/certs/ca-certificates.crt" if self.tls_verify else False
+
+        if self.token is None:
             raise ValueError("{} not configured".format(KEY_TOKEN))
-
-        if KEY_TLS_VERIFY in kwargs:
-            self.tls_verify = check_str_bool(kwargs[KEY_TLS_VERIFY])
-        elif KEY_TLS_VERIFY in os.environ:
-            self.tls_verify = check_str_bool(os.environ[KEY_TLS_VERIFY])
-        elif os.path.exists(env_file()):
-            self.tls_verify = load_param_from_env_file(KEY_TLS_VERIFY)
-            if self.tls_verify is not None:
-                self.tls_verify = check_str_bool(self.tls_verify)
-            else:
-                self.tls_verify = True
 
     def get_event_types(self) -> list:
         """
@@ -133,7 +130,7 @@ class RESTSciriusConnector():
         """
         data = self.get_data(api="rest/rules/es/unique_fields/", qParams={
             "event_type": event_type
-        } if event_type not in (None, "all") else None, ignore_time=True)
+        } if event_type not in (None, "all") else None, ignore_time=False)
         return data.get("fields", [])
 
     def get_data(self, api: str, qParams=None, ignore_time=False):
@@ -142,9 +139,23 @@ class RESTSciriusConnector():
             raise requests.RequestException(resp)
         return json.loads(resp.text)
 
-    def set_query_timeframe(self, from_date: str, to_date: str) -> object:
-        self.from_date = int(datetime.fromisoformat(from_date).strftime('%s')) * 1000
-        self.to_date = int(datetime.fromisoformat(to_date).strftime('%s')) * 1000
+    def set_query_timeframe(self, from_date, to_date) -> object:
+        if isinstance(from_date, str):
+            from_date = datetime.fromisoformat(from_date)
+        elif from_date is None:
+            from_date = datetime.utcnow() - timedelta(days=30)
+
+        if isinstance(to_date, str):
+            to_date = datetime.fromisoformat(to_date)
+        elif to_date is None:
+            to_date = datetime.utcnow()
+
+        if from_date.date() > to_date.date():
+            raise ValueError("Timespan beginning must be before the end")
+
+        self.from_date = int(from_date.strftime('%s')) * 1000
+        self.to_date = int(to_date.strftime('%s')) * 1000
+
         return self
 
     def set_query_delta(self, hours=0, minutes=0) -> object:
@@ -196,20 +207,3 @@ def check_str_bool(val: str) -> bool:
         return False
     else:
         raise ValueError("invalid truth value {}".format(val))
-
-
-def load_param_from_env_file(key: str):
-    """
-    .env file should have bash style variable declarations KEY=VALUE
-    """
-    with open(env_file(), "r") as handle:
-        for line in handle:
-            bits = line.split("=", 1)
-            if len(bits) != 2:
-                raise ValueError("invalid line in env file: {}".format(line))
-            if bits[0] == key:
-                return bits[1].rstrip()
-
-
-def env_file() -> str:
-    return os.path.join(os.path.expanduser("~"), ".env")
