@@ -23,10 +23,12 @@ whereby OS env overrides local file, and API arguments override both.
 import json
 import os
 import requests
+import shutil
 import urllib.parse
 
 import networkx as nx
 import pandas as pd
+import subprocess
 
 from dotenv import dotenv_values
 from datetime import datetime, timedelta
@@ -57,6 +59,12 @@ class RESTSciriusConnector():
         if check_str_bool(env_in_home):
             self.__env_file = os.path.join(os.path.expanduser("~"),
                                            self.__env_file)
+        elif shutil.which("git") is not None:
+            self.__env_file = os.path.join(getGitRoot(),
+                                           self.__env_file)
+
+        if not os.path.exists(self.__env_file):
+            raise LookupError("unable to find env config in {}".format(self.__env_file))
 
         config = {
             **os.environ,
@@ -207,3 +215,8 @@ def check_str_bool(val: str) -> bool:
         return False
     else:
         raise ValueError("invalid truth value {}".format(val))
+
+
+def getGitRoot():
+    return subprocess.Popen(['git', 'rev-parse', '--show-toplevel'],
+                            stdout=subprocess.PIPE).communicate()[0].rstrip().decode('utf-8')
