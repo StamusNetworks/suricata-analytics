@@ -119,7 +119,7 @@ RUN mamba install --quiet --yes \
   fix-permissions "/home/${NB_USER}"
 
 # Not provided in conda forge, fall back to pip
-RUN python3 -m pip install --user msticpy && \
+RUN python3 -m pip install --user msticpy suricata-update idstools && \
   fix-permissions "/home/${NB_USER}"
 
 ARG WHEEL_DIST
