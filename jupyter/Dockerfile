@@ -58,7 +58,8 @@ USER root
 
 COPY jupyter/scripts/clear_notebooks /usr/local/bin
 
-COPY jupyter/Notebooks /home/${NB_USER}/Notebooks
+RUN mkdir -p /home/${NB_USER}/Notebooks
+COPY jupyter/Notebooks/*.ipynb /home/${NB_USER}/Notebooks
 RUN chown -R ${NB_USER}:${NB_GROUP} /home/${NB_USER}/Notebooks
 
 USER ${NB_USER}
