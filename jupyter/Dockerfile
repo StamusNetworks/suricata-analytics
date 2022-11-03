@@ -50,7 +50,9 @@ python3 \
 curl \
 sudo \
 cmake \
-ragel
+ragel \
+rustc \
+cargo
 
 RUN apt-get update \
 && apt-get -qq -y install \
@@ -78,7 +80,6 @@ liblzma-dev \
 libhyperscan-dev \
 libhyperscan5
 
-RUN curl $CURL_OTPS --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s - -y
 ENV PATH "/root/.cargo/bin:$PATH"
 RUN cargo install --force cbindgen
 
