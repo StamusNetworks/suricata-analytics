@@ -19,7 +19,7 @@ FROM python:3.10-slim-bullseye as builder-python
 ARG WHEEL_DIST
 
 RUN apt-get update && \
-    apt-get install -y gcc g++ unixodbc-dev
+  apt-get install -y gcc g++ unixodbc-dev
 
 RUN mkdir /src
 COPY . /src
@@ -39,46 +39,46 @@ RUN mkdir -p $SRC_PATH
 WORKDIR $SRC_PATH
 
 RUN apt-get update \
-&& apt-get install -qq -y \
-git \
-build-essential \
-autogen \
-autoconf \
-libtool \
-pkg-config \
-python3 \
-curl \
-sudo \
-cmake \
-ragel \
-rustc \
-cargo
+  && apt-get install -qq -y \
+  git \
+  build-essential \
+  autogen \
+  autoconf \
+  libtool \
+  pkg-config \
+  python3 \
+  curl \
+  sudo \
+  cmake \
+  ragel \
+  rustc \
+  cargo
 
 RUN apt-get update \
-&& apt-get -qq -y install \
-libboost-all-dev \
-libpcre3 \
-libpcre3-dbg \
-libpcre3-dev \
-libpcre2-dev \
-libpcap-dev \
-libnet1-dev \
-libyaml-0-2 \
-libyaml-dev \
-zlib1g \
-zlib1g-dev \
-libcap-ng-dev \
-libcap-ng0 \
-libmagic-dev \
-libjansson-dev \
-libhiredis-dev \
-libluajit-5.1-dev \
-liblz4-dev \
-libnss3-dev \
-libnspr4-dev \
-liblzma-dev \
-libhyperscan-dev \
-libhyperscan5
+  && apt-get -qq -y install \
+  libboost-all-dev \
+  libpcre3 \
+  libpcre3-dbg \
+  libpcre3-dev \
+  libpcre2-dev \
+  libpcap-dev \
+  libnet1-dev \
+  libyaml-0-2 \
+  libyaml-dev \
+  zlib1g \
+  zlib1g-dev \
+  libcap-ng-dev \
+  libcap-ng0 \
+  libmagic-dev \
+  libjansson-dev \
+  libhiredis-dev \
+  libluajit-5.1-dev \
+  liblz4-dev \
+  libnss3-dev \
+  libnspr4-dev \
+  liblzma-dev \
+  libhyperscan-dev \
+  libhyperscan5
 
 ENV PATH "/root/.cargo/bin:$PATH"
 RUN cargo install --force cbindgen
