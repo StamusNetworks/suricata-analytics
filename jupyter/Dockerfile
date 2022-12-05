@@ -135,7 +135,7 @@ USER root
 COPY jupyter/scripts/clear_notebooks /usr/local/bin
 
 RUN mkdir -p /home/${NB_USER}/Notebooks
-COPY jupyter/Notebooks/*.ipynb /home/${NB_USER}/Notebooks
+COPY jupyter/Notebooks/*.ipynb /home/${NB_USER}/Notebooks/
 RUN chown -R ${NB_USER}:${NB_GROUP} /home/${NB_USER}/Notebooks
 
 RUN apt-get update \
