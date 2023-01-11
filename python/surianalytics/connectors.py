@@ -31,7 +31,7 @@ import pandas as pd
 import subprocess
 
 from dotenv import dotenv_values
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Search for scirius env file in user home rather than local folder
 KEY_ENV_IN_HOME = "SCIRIUS_ENVFILE_IN_HOME"
@@ -39,6 +39,8 @@ KEY_ENV_IN_HOME = "SCIRIUS_ENVFILE_IN_HOME"
 KEY_ENDPOINT = "SCIRIUS_HOST"
 KEY_TOKEN = "SCIRIUS_TOKEN"
 KEY_TLS_VERIFY = "SCIRIUS_TLS_VERIFY"
+
+LOCAL_TZ = datetime.now(timezone(timedelta(0))).astimezone().tzinfo
 
 
 class RESTSciriusConnector():
@@ -48,8 +50,8 @@ class RESTSciriusConnector():
     """
     last_request = None
 
-    from_date = None
-    to_date = None
+    from_date: datetime
+    to_date: datetime
 
     page_size = 1000
 
@@ -85,6 +87,8 @@ class RESTSciriusConnector():
 
         if self.token is None:
             raise ValueError("{} not configured".format(KEY_TOKEN))
+
+        self.set_query_timeframe(None, None)
 
     def get_event_types(self) -> list:
         """
@@ -150,29 +154,39 @@ class RESTSciriusConnector():
     def set_query_timeframe(self, from_date, to_date) -> object:
         if isinstance(from_date, str):
             from_date = datetime.fromisoformat(from_date)
+        elif isinstance(from_date, int):
+            from_date = datetime.fromtimestamp(from_date / 1000, tz=timezone.utc)
         elif from_date is None:
-            from_date = datetime.utcnow() - timedelta(days=30)
+            from_date = datetime.now(LOCAL_TZ) - timedelta(days=30)
+        elif isinstance(from_date, datetime):
+            from_date = from_date
+        else:
+            raise TypeError("from_date invalid type")
 
         if isinstance(to_date, str):
             to_date = datetime.fromisoformat(to_date)
+        elif isinstance(to_date, int):
+            to_date = datetime.fromtimestamp(to_date / 1000, tz=timezone.utc)
         elif to_date is None:
-            to_date = datetime.utcnow()
+            to_date = datetime.now(LOCAL_TZ)
+        elif isinstance(to_date, datetime):
+            to_date = to_date
+        else:
+            raise TypeError("to_date invalid type")
 
-        if from_date.date() > to_date.date():
+        self.from_date = from_date
+        self.to_date = to_date
+
+        if self.from_date.date() > self.to_date.date():
             raise ValueError("Timespan beginning must be before the end")
-
-        self.from_date = int(from_date.strftime('%s')) * 1000
-        self.to_date = int(to_date.strftime('%s')) * 1000
 
         return self
 
     def set_query_delta(self, hours=0, minutes=0) -> object:
         if hours == 0 and minutes == 0:
             hours = 1
-        time_to = datetime.utcnow()
-        time_from = time_to - timedelta(hours=hours, minutes=minutes)
-        self.to_date = int(time_to.strftime('%s')) * 1000
-        self.from_date = int(time_from.strftime('%s')) * 1000
+        self.to_date = datetime.now(LOCAL_TZ)
+        self.from_date = self.to_date - timedelta(hours=hours, minutes=minutes)
         return self
 
     def set_page_size(self, size: int) -> object:
@@ -181,14 +195,19 @@ class RESTSciriusConnector():
         self.page_size = size
         return self
 
+    def __time_params(self) -> dict:
+        return {
+            "from_date": int(self.from_date.strftime('%s')) * 1000,
+            "to_date": int(self.to_date.strftime('%s')) * 1000,
+        }
+
     def __get(self, api: str, qParams=None, ignore_time=False) -> requests.Response:
         url = urllib.parse.urljoin(self.__host(), api)
         if qParams is None:
             qParams = {}
 
         if not ignore_time and self.to_date is not None and self.to_date is not None:
-            time_params = {"from_date": self.from_date, "to_date": self.to_date}
-            qParams = {**time_params, **qParams}
+            qParams = {**self.__time_params(), **qParams}
 
         if self.page_size > 0:
             qParams["page_size"] = self.page_size
