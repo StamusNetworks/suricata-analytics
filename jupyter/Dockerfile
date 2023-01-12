@@ -14,6 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ARG WHEEL_DIST="/tmp/wheels"
 ARG BUILD_WORKERS=1
+ARG SURICATA_TAG="suricata-7.0.0-beta1"
 
 FROM python:3.10-slim-bullseye as builder-python
 ARG WHEEL_DIST
@@ -30,6 +31,7 @@ FROM ubuntu:22.04 as builder-suricata
 LABEL maintainer="Markus Kont <markus@stamus-networks.com>"
 
 ARG BUILD_WORKERS
+ARG SURICATA_TAG
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV SRC_PATH /src
@@ -83,7 +85,7 @@ RUN apt-get update \
 ENV PATH "/root/.cargo/bin:$PATH"
 RUN cargo install --force cbindgen
 
-RUN git clone https://github.com/OISF/suricata.git
+RUN git clone --branch ${SURICATA_TAG} --single-branch https://github.com/OISF/suricata.git
 WORKDIR /${SRC_PATH}/suricata/
 RUN if [ ! -d "libhtp" ]; then git clone https://github.com/OISF/libhtp.git -b 0.5.x --depth 1; fi
 RUN ./autogen.sh 
