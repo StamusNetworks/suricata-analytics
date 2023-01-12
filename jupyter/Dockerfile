@@ -164,6 +164,7 @@ RUN chown -R ${NB_USER} /etc/suricata
 RUN mkdir -p /var/lib/suricata
 RUN mkdir -p /var/log/suricata && chown -R ${NB_USER} /var/log/suricata
 RUN mkdir -p /var/lib/suricata && chown -R ${NB_USER} /var/lib/suricata
+RUN mkdir -p /var/run/suricata && chown -R ${NB_USER} /var/run/suricata
 ENV PATH "/opt/suricata/bin/:$PATH"
 
 USER ${NB_USER}
