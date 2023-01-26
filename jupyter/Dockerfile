@@ -110,6 +110,7 @@ LABEL maintainer="Stamus Networks oss@stamus-networks.com"
 ARG WHEEL_DIST
 
 RUN mamba install --quiet --yes \
+  'jupyterlab-spellchecker' \
   'elasticsearch' \
   'hvplot' \
   'bokeh' \
