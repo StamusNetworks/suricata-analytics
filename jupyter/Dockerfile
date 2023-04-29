@@ -78,9 +78,7 @@ RUN apt-get update \
   liblz4-dev \
   libnss3-dev \
   libnspr4-dev \
-  liblzma-dev \
-  libhyperscan-dev \
-  libhyperscan5
+  liblzma-dev
 
 ENV PATH "/root/.cargo/bin:$PATH"
 RUN cargo install --force cbindgen
