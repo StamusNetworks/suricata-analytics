@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ARG WHEEL_DIST="/tmp/wheels"
 ARG BUILD_WORKERS=1
-ARG SURICATA_TAG="suricata-7.0.0-beta1"
+ARG SURICATA_TAG="suricata-7.0.0-rc1"
 
 FROM python:3.10-slim-bullseye as builder-python
 ARG WHEEL_DIST
@@ -78,9 +78,7 @@ RUN apt-get update \
   liblz4-dev \
   libnss3-dev \
   libnspr4-dev \
-  liblzma-dev \
-  libhyperscan-dev \
-  libhyperscan5
+  liblzma-dev
 
 ENV PATH "/root/.cargo/bin:$PATH"
 RUN cargo install --force cbindgen
