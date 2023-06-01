@@ -101,7 +101,7 @@ RUN make -j ${BUILD_WORKERS}
 RUN make install
 RUN make install-conf
 
-FROM jupyter/scipy-notebook:ubuntu-22.04
+FROM jupyter/scipy-notebook:lab-3.6.3
 
 LABEL maintainer="Stamus Networks oss@stamus-networks.com"
 
