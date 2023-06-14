@@ -25,6 +25,7 @@ import os
 import requests
 import shutil
 import urllib.parse
+from copy import deepcopy
 
 import networkx as nx
 import pandas as pd
@@ -50,8 +51,8 @@ class RESTSciriusConnector():
     """
     last_request = None
 
-    from_date: datetime
-    to_date: datetime
+    from_date: None
+    to_date: None
 
     page_size = 1000
 
@@ -88,7 +89,16 @@ class RESTSciriusConnector():
         if self.token is None:
             raise ValueError("{} not configured".format(KEY_TOKEN))
 
+        self.tenant = None
+        self.index = None
+
         self.set_query_timeframe(None, None)
+
+    def set_tenant(self, tenant):
+        self.tenant = tenant
+
+    def set_index(self, index):
+        self.index = index
 
     def get_event_types(self) -> list:
         """
@@ -151,7 +161,7 @@ class RESTSciriusConnector():
             raise requests.RequestException(resp)
         return json.loads(resp.text)
 
-    def set_query_timeframe(self, from_date, to_date) -> object:
+    def set_from_date(self, from_date):
         if isinstance(from_date, str):
             from_date = datetime.fromisoformat(from_date)
         elif isinstance(from_date, int):
@@ -163,6 +173,9 @@ class RESTSciriusConnector():
         else:
             raise TypeError("from_date invalid type")
 
+        self.from_date = from_date
+
+    def set_to_date(self, to_date):
         if isinstance(to_date, str):
             to_date = datetime.fromisoformat(to_date)
         elif isinstance(to_date, int):
@@ -174,8 +187,11 @@ class RESTSciriusConnector():
         else:
             raise TypeError("to_date invalid type")
 
-        self.from_date = from_date
         self.to_date = to_date
+
+    def set_query_timeframe(self, from_date, to_date) -> object:
+        self.set_from_date(from_date)
+        self.set_to_date(to_date)
 
         if self.from_date.date() > self.to_date.date():
             raise ValueError("Timespan beginning must be before the end")
@@ -190,24 +206,56 @@ class RESTSciriusConnector():
         return self
 
     def set_page_size(self, size: int) -> object:
-        if not isinstance(size, int) or size < 1:
-            raise ValueError("page size must be positive integer")
+        if not isinstance(size, int) or size < 0:
+            raise ValueError("page size must be 0 or positive integer")
         self.page_size = size
         return self
 
-    def __time_params(self) -> dict:
+    def _from_date_param(self):
+        if self.from_date:
+            return int(self.from_date.strftime('%s')) * 1000
+        return 0
+
+    def _to_date_param(self):
+        if self.to_date:
+            return int(self.to_date.strftime('%s')) * 1000
+        return int(datetime.now().strftime('%s')) * 1000
+
+    def _time_params(self) -> dict:
         return {
-            "from_date": int(self.from_date.strftime('%s')) * 1000,
-            "to_date": int(self.to_date.strftime('%s')) * 1000,
+            "from_date": self._from_date_param(),
+            "to_date": self._to_date_param(),
         }
 
+    def _post(self, api, qFilters=None, aggs=None, qParams=None, time_filter='@timestamp') -> requests.Response:
+        url = urllib.parse.urljoin(self._host(), api)
+        if qParams is not None:
+            url = f'{url}?{urllib.parse.urlencode(qParams)}'
+
+        if qFilters is None:
+            qFilters = '*'
+
+        resp = requests.post(
+            url,
+            json={
+                'index': self.index,
+                'qfilter': qFilters,
+                'aggs': aggs,
+                'size': self.page_size,
+                'time_filter': time_filter
+            },
+            verify=self.tls_verify,
+            headers={"Authorization": "Token {}".format(self.token)}
+        )
+        return resp
+
     def __get(self, api: str, qParams=None, ignore_time=False) -> requests.Response:
-        url = urllib.parse.urljoin(self.__host(), api)
+        url = urllib.parse.urljoin(self._host(), api)
         if qParams is None:
             qParams = {}
 
         if not ignore_time and self.to_date is not None and self.to_date is not None:
-            qParams = {**self.__time_params(), **qParams}
+            qParams = {**self._time_params(), **qParams}
 
         if self.page_size > 0:
             qParams["page_size"] = self.page_size
@@ -223,8 +271,177 @@ class RESTSciriusConnector():
                             },
                             verify=self.tls_verify)
 
-    def __host(self) -> str:
+    def _host(self) -> str:
         return "https://{}".format(self.endpoint)
+
+
+class ESQueryBuilder(RESTSciriusConnector):
+    API = '/rest/rules/es/search/'
+    TEMPLATE = {
+        'query': {
+            'bool': {
+                'must': [{
+                    'query_string': {
+                        'analyze_wildcard': True,
+                        'query': '*'
+                    }
+                }, {
+                    'range': {}
+                }]
+            }
+        },
+        'size': 10
+    }
+    AGG = {
+        'aggs': {
+            '<name>': {
+                'terms': {
+                    'field': None,
+                    'order': {
+                        '_count': 'desc'
+                    },
+                    'size': 5
+                }
+            }
+        }
+    }
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.reset()
+
+    def __str__(self):
+        self.__build_query()
+        return json.dumps(self.body)
+
+    def __dict__(self):
+        self.__build_query()
+        return self.body
+
+    def reset(self):
+        self.body = deepcopy(self.TEMPLATE)
+        self.qfilter = None
+        self.aggs = None
+        self.time_filter = '@timestamp'
+        self.set_page_size(10)
+        self.nb_aggs = 0
+
+    def set_time_filter(self, time_filter):
+        self.time_filter = time_filter
+
+    def add_aggs(self, field, order=None, sort='desc', size=10):
+        self.nb_aggs += 1
+        agg = deepcopy(self.AGG)
+        sub_section = agg['aggs'].pop('<name>')
+        agg['aggs'][str(self.nb_aggs)] = sub_section
+        agg['aggs'][str(self.nb_aggs)]['terms']['field'] = field
+
+        if order:
+            agg['aggs'][str(self.nb_aggs)]['terms']['order'] = {'_count': 'desc' if not sort else sort}
+
+        agg['aggs'][str(self.nb_aggs)]['terms']['size'] = size
+
+        if self.aggs:
+            sub = self.aggs['aggs']['1']
+            for cpt in range(2, self.nb_aggs + 1):
+                if 'aggs' in sub:
+                    sub = sub['aggs'][str(cpt)]
+                    continue
+                break
+
+            sub.update(agg)
+        else:
+            self.aggs = agg
+
+    def __build_query(self):
+        if self.qfilter:
+            self.body['query']['bool']['must'][0]['query_string']['query'] = self.qfilter
+
+        self.body['query']['bool']['must'][1]['range'] = {
+            self.time_filter: {
+                'from': self._from_date_param(),
+                'to': self._to_date_param()
+            }
+        }
+
+        if self.aggs:
+            self.body.update(self.aggs)
+
+        self.body['size'] = self.page_size
+
+    @classmethod
+    def _match_filter(cls, item, keys, val):
+
+        for idx, key in enumerate(keys, 1):
+            item = item[key]
+
+            if isinstance(item, dict):
+                continue
+            elif isinstance(item, list):
+                for sub_item in item:
+                    return cls._match_filter(sub_item, keys[idx:], val)
+            else:
+                return item == val
+
+        return False
+
+    @classmethod
+    def clean_host_id(cls, arr: list, **filters):
+        for item in deepcopy(arr):
+            for key, val in filters.items():
+                if not cls._match_filter(deepcopy(item), key.split('.'), val):
+                    arr.remove(item)
+                    break
+        return arr
+
+    def post(self) -> requests.Response:
+        qParams = {}
+
+        if self.tenant is not None:
+            qParams.update({'tenant': self.tenant})
+
+        if self.from_date:
+            qParams.update({'from_date': self._from_date_param()})
+
+        if self.to_date:
+            qParams.update({'to_date': self._to_date_param()})
+
+        return self._post(self.API, self.qfilter, self.aggs, qParams=qParams, time_filter=self.time_filter)
+
+    @staticmethod
+    def filter_join(filters, operator='AND'):
+        return f"({f' {operator} '.join(filters)})"
+
+    def set_qfilter(self, qfilter):
+        self.qfilter = qfilter
+        if self.tenant and self.qfilter and 'tenant' not in self.qfilter:
+            qfilter = self.filter_join([self.qfilter, f'tenant: {self.tenant}'])
+            self.set_qfilter(qfilter)
+
+
+def escape(string):
+    '''
+    Escape other elasticsearch reserved characters
+    '''
+    return string. \
+        replace('=', r'\='). \
+        replace('+', r'\+'). \
+        replace('-', r'\-'). \
+        replace('&', r'\&'). \
+        replace('|', r'\|'). \
+        replace('!', r'\!'). \
+        replace('(', r'\('). \
+        replace(')', r'\)'). \
+        replace('{', r'\{'). \
+        replace('}', r'\}'). \
+        replace('[', r'\['). \
+        replace(']', r'\]'). \
+        replace('^', r'\^'). \
+        replace('"', r'\"'). \
+        replace('~', r'\~'). \
+        replace(':', r'\:'). \
+        replace('/', r'\/'). \
+        replace('\\', r'\\')
 
 
 def check_str_bool(val: str) -> bool:
