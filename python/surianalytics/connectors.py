@@ -43,6 +43,9 @@ KEY_TLS_VERIFY = "SCIRIUS_TLS_VERIFY"
 
 LOCAL_TZ = datetime.now(timezone(timedelta(0))).astimezone().tzinfo
 
+QUERY_RETROSEARCH_SNI = "event_type: tls AND tls.sni.keyword: ({domains})"
+QUERY_RETROSEARCH_HTTP_HOST = "event_type: http AND http.hostname.keyword: ({domains})"
+
 
 class RESTSciriusConnector():
 
@@ -141,6 +144,46 @@ class RESTSciriusConnector():
             "event_type": event_type
         } if event_type not in (None, "all") else None, ignore_time=False)
         return data.get("fields", [])
+
+    def retrosearch(self, domains: list[str], batchsize: int = 50) -> pd.DataFrame:
+        """
+        This method does retroactive search for IoC values listed in arguments. It batches up values and does multiple queries
+        in order to not overload elastic. It then builds pandas dataframe of EVE events that match the retroscan.
+
+        In: list of domain IoC values
+        Out: pandas dataframe with IoC sightings
+        """
+        if batchsize > 100:
+            raise ValueError("batch size is too high, more than 100 values is likely to cause failed elastic query")
+        df = pd.DataFrame()
+        batches = int(len(domains) / batchsize) + 1
+        for i in range(batches):
+            if len(domains) > batchsize:
+                batch = domains[:batchsize]
+                domains = domains[batchsize:]
+            else:
+                batch = domains
+
+            for q in ((QUERY_RETROSEARCH_SNI.format(domains=" OR ".join(batch)), "exact", "tls.sni"),
+                      (QUERY_RETROSEARCH_SNI.format(domains=" OR ".join(["*.{d}".format(d=d) for d in batch])), "sub", "tls.sni"),
+                      (QUERY_RETROSEARCH_HTTP_HOST.format(domains=" OR ".join(batch)), "exact", "http.hostname"),
+                      (QUERY_RETROSEARCH_HTTP_HOST.format(domains=" OR ".join(["*.{d}".format(d=d) for d in batch])), "sub", "http.hostname")):
+                result = self.get_events_df(qfilter=q[0])
+                if len(result) > 0:
+                    result["ioc.type"] = "domain"
+                    result["ioc.match"] = q[1]
+                    result["ioc.source"] = q[2]
+                    result["ioc.value.match"] = result[q[2]]
+
+                    result["ioc.batch.count"] = i
+                    if len(result) == self.page_size:
+                        result["ioc.batch.partial"] = True
+                    else:
+                        result["ioc.batch.partial"] = False
+                    df = pd.concat([df, result], axis=0)
+
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        return df
 
     def get_data(self, api: str, qParams=None, ignore_time=False):
         resp = self.__get(api, qParams, ignore_time)
