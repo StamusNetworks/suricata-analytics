@@ -319,11 +319,13 @@ class ESQueryBuilder(RESTSciriusConnector):
         self.nb_aggs = 0
         self.tenant = None
         self.index = 'logstash-alert-*'
+        self.aggs_cols = []
 
     def set_time_filter(self, time_filter):
         self.time_filter = time_filter
 
-    def add_aggs(self, field, order=None, sort='desc', size=10):
+    def add_aggs(self, field, col_name, order=None, sort='desc', size=10):
+        self.aggs_cols.append(col_name)
         self.nb_aggs += 1
         agg = deepcopy(self.AGG)
         sub_section = agg['aggs'].pop('<name>')
@@ -410,6 +412,29 @@ class ESQueryBuilder(RESTSciriusConnector):
         if self.tenant and self.qfilter and 'tenant' not in self.qfilter:
             qfilter = self.filter_join([self.qfilter, f'tenant: {self.tenant}'])
             self.set_qfilter(qfilter)
+
+    def __parse_aggs(self, val, res, idx=0, row_res=None):
+        if row_res is None:
+            row_res = {}
+
+        for item in val.get('buckets', []):
+            row_res[idx] = item['key']
+            if str(idx + 2) in item:
+                self.__parse_aggs(item[str(idx + 2)], res, idx + 1, row_res)
+            else:
+                for j in range(0, idx + 1):
+                    res[self.aggs_cols[j]].append(row_res[j])
+                res[self.aggs_cols[idx + 1]].append(item['doc_count'])
+
+    def flatten_aggregation(self, content):
+        if 'Count' not in self.aggs_cols:
+            self.aggs_cols.append('Count')
+        res = dict((key, []) for key in self.aggs_cols)
+
+        for _, val in content.get('aggregations', {}).items():
+            self.__parse_aggs(val, res)
+
+        return pd.DataFrame(dict((key, res[key]) for key in self.aggs_cols))
 
 
 def escape(string):
