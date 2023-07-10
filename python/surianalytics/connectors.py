@@ -287,9 +287,6 @@ class ESQueryBuilder(RESTSciriusConnector):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.tenant = None
-        self.index: str = 'logstash-alert-*'
-
         self.reset()
 
     def __str__(self):
