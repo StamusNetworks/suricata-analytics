@@ -279,11 +279,7 @@ class ESQueryBuilder(RESTSciriusConnector):
         'aggs': {
             '<name>': {
                 'terms': {
-                    'field': None,
-                    'order': {
-                        '_count': 'desc'
-                    },
-                    'size': 5
+                    'field': None
                 }
             }
         }
