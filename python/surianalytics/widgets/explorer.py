@@ -526,7 +526,7 @@ class Explorer(object):
             .agg({
                 item: ["min", "max"] if item in TIME_COLS
                 else ["unique", "nunique"]
-                for item in list(df.columns.values) if item != groupby
+                for item in list(df.columns.values) if item != groupby and item not in self._list_cols
             })
         )
         if self.data_aggregate is not None and not self.data_aggregate.empty:
@@ -539,7 +539,10 @@ class Explorer(object):
         return [] if self.data is None else list(self.data.columns.values)
 
     def _filtered_column_values(self) -> list:
-        return list(self.data_filtered.columns.values)
+        self._list_cols = (self.data_filtered.applymap(type) == list).any()
+        self._list_cols = list(self._list_cols.loc[self._list_cols].index)
+
+        return [v for v in list(self.data_filtered.columns.values) if v not in self._list_cols]
 
     def _select_default_query(self) -> str:
         if len(self._cached_queries) > 0:
