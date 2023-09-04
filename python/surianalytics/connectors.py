@@ -397,7 +397,7 @@ class ESQueryBuilder(RESTSciriusConnector):
         }
 
         if self.aggs:
-            self.body.update(self.aggs)
+            self.body["aggs"] = self.aggs
 
         self.body['size'] = self.page_size
 
