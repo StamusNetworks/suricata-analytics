@@ -228,11 +228,11 @@ class RESTSciriusConnector():
 
         return self
 
-    def set_query_delta(self, hours=0, minutes=0) -> object:
-        if hours == 0 and minutes == 0:
+    def set_query_delta(self, days=0, hours=0, minutes=0) -> object:
+        if hours == 0 and minutes == 0 and days == 0:
             hours = 1
         self.to_date = datetime.now(LOCAL_TZ)
-        self.from_date = self.to_date - timedelta(hours=hours, minutes=minutes)
+        self.from_date = self.to_date - timedelta(days=days, hours=hours, minutes=minutes)
         return self
 
     def set_page_size(self, size: int) -> object:
