@@ -33,6 +33,7 @@ import subprocess
 
 from dotenv import dotenv_values
 from datetime import datetime, timedelta, timezone
+from dateutil import parser
 
 # Search for scirius env file in user home rather than local folder
 KEY_ENV_IN_HOME = "SCIRIUS_ENVFILE_IN_HOME"
@@ -193,7 +194,7 @@ class RESTSciriusConnector():
 
     def set_from_date(self, from_date):
         if isinstance(from_date, str):
-            from_date = datetime.fromisoformat(from_date)
+            from_date = parser.parse(from_date)
         elif isinstance(from_date, int):
             from_date = datetime.fromtimestamp(from_date / 1000, tz=timezone.utc)
         elif from_date is None:
@@ -207,7 +208,7 @@ class RESTSciriusConnector():
 
     def set_to_date(self, to_date):
         if isinstance(to_date, str):
-            to_date = datetime.fromisoformat(to_date)
+            to_date = parser.parse(to_date)
         elif isinstance(to_date, int):
             to_date = datetime.fromtimestamp(to_date / 1000, tz=timezone.utc)
         elif to_date is None:
