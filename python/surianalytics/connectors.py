@@ -26,6 +26,7 @@ import requests
 import shutil
 import urllib.parse
 from copy import deepcopy
+import yaml
 
 import networkx as nx
 import pandas as pd
@@ -285,7 +286,7 @@ class RESTSciriusConnector():
         if not ignore_time and self.to_date is not None and self.to_date is not None:
             qParams = {**self._time_params(), **qParams}
 
-        if self.page_size > 0:
+        if self.page_size > 0 and not 'page_size' in qParams:
             qParams["page_size"] = self.page_size
 
         if "qfilter" in qParams and qParams["qfilter"] == "":
@@ -305,6 +306,7 @@ class RESTSciriusConnector():
 
 class ESQueryBuilder(RESTSciriusConnector):
     API = '/rest/rules/es/search/'
+    CONF_FILE = './params.yaml'
     TEMPLATE = {
         'query': {
             'bool': {
@@ -332,6 +334,11 @@ class ESQueryBuilder(RESTSciriusConnector):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
+        self.conf = {}
+        if os.path.exists(self.CONF_FILE):
+            with open(self.CONF_FILE, 'r') as f:
+                self.conf = yaml.safe_load(f) or {}
+
         self.reset()
 
     def __str__(self):
@@ -341,6 +348,18 @@ class ESQueryBuilder(RESTSciriusConnector):
     def __dict__(self):
         self.__build_query()
         return self.body
+
+    def get_data(self, api: str, qParams=None, ignore_time=False):
+        if qParams is None:
+            qParams = {}
+
+        if qParams.get('event_view', 'true') == 'true':
+            if self.tenant and 'tenant' not in qParams:
+                qParams['tenant'] = self.tenant
+        else:
+            ignore_time = True
+
+        return super().get_data(api, qParams, ignore_time)
 
     def set_tenant(self, tenant):
         self.tenant = tenant
@@ -355,9 +374,16 @@ class ESQueryBuilder(RESTSciriusConnector):
         self.time_filter = '@timestamp'
         self.set_page_size(10)
         self.nb_aggs = 0
-        self.tenant = None
+        self.tenant = self.conf.get('tenant', None)
         self.index = 'logstash-alert-*'
         self.aggs_cols = []
+
+        now = datetime.now()
+        time_range = self.conf.get('time_range', 30)
+        from_date = self.conf.get('from_date', (now - timedelta(days=time_range)).strftime('%Y-%m-%dT%H:%M:%SZ'))
+        to_date = self.conf.get('to_date', now.strftime('%Y-%m-%dT%H:%M:%SZ'))
+        self.set_from_date(from_date)
+        self.set_to_date(to_date)
 
     def set_time_filter(self, time_filter):
         self.time_filter = time_filter
