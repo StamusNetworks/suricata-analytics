@@ -1,2 +1,2 @@
 jupyter
-jupyterlab==3.6.3
+jupyterlab
