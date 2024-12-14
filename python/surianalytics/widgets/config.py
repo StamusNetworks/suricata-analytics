@@ -93,14 +93,15 @@ class Timepicker(object):
         display(self.box)
 
 
-def update_connector_time_delta(c: RESTSciriusConnector, dump_path: str):
+def update_connector_timeframe(c: RESTSciriusConnector, dump_path: str):
     with open(dump_path, "rb") as handle:
         data = json.loads(handle.read())
 
     if data["use_relative_time"] is True:
-        c.set_query_delta(days=data["time_days"],
-                          hours=data["time_hours"],
-                          minutes=data["time_minutes"])
+        c.days = data["time_days"]
+        c.hours = data["time_hours"]
+        c.minutes = data["time_minutes"]
+        c.set_time_delta()
     else:
         c.set_query_timeframe(from_date=data["from_date"],
                               to_date=data["to_date"])
