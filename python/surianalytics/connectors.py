@@ -58,6 +58,21 @@ class RESTSciriusConnector():
     last_request = None
     page_size = 1000
 
+    weeks = 0
+    days = 30
+    hours = 0
+    minutes = 0
+
+    time_delta = None
+
+    from_date = None
+    to_date = None
+
+    qfilter = None
+    basefilter: None | str = None
+
+    ignore_basefilter: bool = False
+
     def __init__(self, **kwargs) -> None:
         env_in_home = os.environ.get(KEY_ENV_IN_HOME, "no")
         self.__env_file = ".env"
@@ -88,10 +103,10 @@ class RESTSciriusConnector():
         self.tls_verify = check_str_bool(self.tls_verify)
         self.tls_verify = "/etc/ssl/certs/ca-certificates.crt" if self.tls_verify else False
 
+        self.set_time_delta()
+
         if self.token is None:
             raise ValueError("{} not configured".format(KEY_TOKEN))
-
-        self.set_query_timeframe(None, None)
 
     def get_event_types(self) -> list:
         """
@@ -198,9 +213,12 @@ class RESTSciriusConnector():
         if isinstance(from_date, str):
             from_date = parser.parse(from_date)
         elif isinstance(from_date, int):
-            from_date = datetime.fromtimestamp(from_date / 1000, tz=timezone.utc)
+            from_date = datetime.fromtimestamp(from_date / 1000, tz=LOCAL_TZ)
         elif from_date is None:
-            from_date = datetime.now(LOCAL_TZ) - timedelta(days=30)
+            if self.time_delta is not None:
+                from_date = datetime.now(LOCAL_TZ) - self.time_delta
+            else:
+                raise TypeError("empty from_date is needs time delta")
         elif isinstance(from_date, datetime):
             from_date = from_date
         else:
@@ -212,7 +230,7 @@ class RESTSciriusConnector():
         if isinstance(to_date, str):
             to_date = parser.parse(to_date)
         elif isinstance(to_date, int):
-            to_date = datetime.fromtimestamp(to_date / 1000, tz=timezone.utc)
+            to_date = datetime.fromtimestamp(to_date / 1000, tz=LOCAL_TZ)
         elif to_date is None:
             to_date = datetime.now(LOCAL_TZ)
         elif isinstance(to_date, datetime):
@@ -223,6 +241,12 @@ class RESTSciriusConnector():
         self.to_date = to_date
 
     def set_query_timeframe(self, from_date, to_date) -> object:
+        """
+        Set explicit timeframe for inspecting data in the past
+        mutually exclusive with delta queries
+        By setting the time delta to None, we'll disable dynamic updates to from_date and to_date
+        """
+        self.time_delta = None
         self.set_from_date(from_date)
         self.set_to_date(to_date)
 
@@ -231,17 +255,23 @@ class RESTSciriusConnector():
 
         return self
 
-    def set_query_delta(self, days=0, hours=0, minutes=0) -> object:
-        if hours == 0 and minutes == 0 and days == 0:
-            hours = 1
-        self.to_date = datetime.now(LOCAL_TZ)
-        self.from_date = self.to_date - timedelta(days=days, hours=hours, minutes=minutes)
+    def set_time_delta(self, td: timedelta | None = None) -> object:
+        if td is None:
+            self.time_delta = timedelta(weeks=self.weeks, days=self.days, hours=self.hours, minutes=self.minutes)
+        else:
+            self.time_delta = td
         return self
 
-    def set_page_size(self, size: int) -> object:
-        if not isinstance(size, int) or size < 0:
-            raise ValueError("page size must be 0 or positive integer")
-        self.page_size = size
+    def _update_timestamps(self) -> object:
+        """
+        internal method to be called on every query
+        explicit timeframe and query delta are mutually exclusive
+        """
+        if self.time_delta is None:
+            return self
+
+        self.to_date = datetime.now(LOCAL_TZ)
+        self.from_date = self.to_date - self.time_delta
         return self
 
     def _from_date_param(self) -> int:
@@ -279,6 +309,10 @@ class RESTSciriusConnector():
         return resp
 
     def __get(self, api: str, qParams=None, ignore_time=False) -> requests.Response:
+        # use relative time if delta is enabled
+        if self.time_delta is not None:
+            self._update_timestamps()
+
         url = urllib.parse.urljoin(self._host(), api)
         if qParams is None:
             qParams = {}
@@ -286,11 +320,24 @@ class RESTSciriusConnector():
         if not ignore_time and self.to_date is not None and self.to_date is not None:
             qParams = {**self._time_params(), **qParams}
 
-        if self.page_size > 0 and not 'page_size' in qParams:
+        if self.page_size > 0 and 'page_size' not in qParams:
             qParams["page_size"] = self.page_size
 
-        if "qfilter" in qParams and qParams["qfilter"] == "":
-            qParams["qfilter"] = "*"
+        if qParams["page_size"] > 10000:
+            raise ValueError("Elasticsearch will return maximum 10000 documents")
+
+        if "qfilter" not in qParams or qParams["qfilter"] in ("", None):
+            qParams["qfilter"] = self.qfilter if self.qfilter is not None else "*"
+
+        if not self.ignore_basefilter and self.basefilter not in ("", None):
+            base = self.basefilter
+            qfilter = qParams["qfilter"]
+
+            if qfilter in ("", "*"):
+                qParams["qfilter"] = base
+            else:
+                qParams["qfilter"] = f"({base}) AND ({qfilter})"
+
         url += "?{}".format(urllib.parse.urlencode(qParams))
 
         self.last_request = url
@@ -372,7 +419,7 @@ class ESQueryBuilder(RESTSciriusConnector):
         self.qfilter = None
         self.aggs = None
         self.time_filter = '@timestamp'
-        self.set_page_size(10)
+        self.page_size = 10
         self.nb_aggs = 0
         self.tenant = self.conf.get('tenant', None)
         self.index = 'logstash-alert-*'
@@ -459,6 +506,10 @@ class ESQueryBuilder(RESTSciriusConnector):
 
         if self.tenant is not None:
             qParams.update({'tenant': self.tenant})
+
+        # use relative time if delta is enabled
+        if self.time_delta is not None:
+            self._update_timestamps()
 
         qParams.update({'from_date': self._from_date_param()})
         qParams.update({'to_date': self._to_date_param()})
