@@ -295,7 +295,7 @@ class Explorer(object):
             self._tabs.set_title(i, item[1])
 
     def _download_eve(self, args: None) -> None:
-        self._connector.set_page_size(self._slider_page_size.value)
+        self._connector.page_size = self._slider_page_size.value
 
         if self._tickbox_time_use_relative.value is True:
             self._connector.set_query_delta(hours=self._slider_time_hours.value,
