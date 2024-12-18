@@ -29,7 +29,7 @@ SCIRIUS_HOST=<IP or Hostname>
 SCIRIUS_TLS_VERIFY=yes
 ```
 
-More detailed info about generating the token can be found in [embedded blog post](jupyter/Notebooks/blogs/playbook-scirius/JupyterPlaybooksForScirius.ipynb)
+More detailed info about generating the token can be found in [embedded blog post](/jupyter/Notebooks/blogs/playbooks-scirius/JupyterPlaybooksForScirius.ipynb)
 
 ### Setting up the python helper
 
