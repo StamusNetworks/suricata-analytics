@@ -255,6 +255,13 @@ class RESTSciriusConnector():
 
         return self
 
+    def set_query_delta(self, **kwargs) -> object:
+        for param in ["minutes", "hours", "days", "weeks"]:
+            val = kwargs.get(param)
+            if isinstance(val, int) and val > 0:
+                setattr(self, param, val)
+        return self.set_time_delta()
+
     def set_time_delta(self, td: timedelta | None = None) -> object:
         if td is None:
             self.time_delta = timedelta(weeks=self.weeks, days=self.days, hours=self.hours, minutes=self.minutes)
