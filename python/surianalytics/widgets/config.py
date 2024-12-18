@@ -93,7 +93,10 @@ class Timepicker(object):
         display(self.box)
 
 
-def update_connector_timeframe(c: RESTSciriusConnector, dump_path: str):
+def update_connector_timeframe(c: RESTSciriusConnector, dump_path: str) -> bool:
+    if not os.path.exists(dump_path):
+        return False
+
     with open(dump_path, "rb") as handle:
         data = json.loads(handle.read())
 
@@ -105,3 +108,4 @@ def update_connector_timeframe(c: RESTSciriusConnector, dump_path: str):
     else:
         c.set_query_timeframe(from_date=data["from_date"],
                               to_date=data["to_date"])
+    return True
