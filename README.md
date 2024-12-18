@@ -4,19 +4,15 @@
 
 This repository contains various resources that are useful when interacting with Suricata data.
 
-## Content
-
-The repository is organized into directories. Each one contains data for the associated software.
-
 ## Jupyter
 
 [Project Jupyter](https://jupyter.org/) provides a interactive data analytics environment. We provide threat hunting and data exploration notebooks which are located under `jupyter/Notebooks`. Those notebooks are designed to interact with [Scirius](https://github.com/StamusNetworks/scirius) REST API endpoints using the `python/surianalytics` data connectors.
 
-### Getting started
+## Getting started
 
-#### Docker build
+### Connection prep
 
-We provide a docker image that encapsulates all dependencies needed by the notebooks. Easiest way to get started is using `docker-compose`. Firstly, use `.env.example` as reference for setting up SELKS / SSP connection variables.
+Firstly, set up authentication parameters for connecting to SCS or ClearNDR.
 
 ```
 cp .env.example .env
@@ -33,16 +29,20 @@ SCIRIUS_HOST=<IP or Hostname>
 SCIRIUS_TLS_VERIFY=yes
 ```
 
-Build the docker image.
+More detailed info about generating the token can be found in [embedded blog post](jupyter/Notebooks/blogs/playbook-scirius/JupyterPlaybooksForScirius.ipynb)
+
+### Setting up the python helper
+
+We provide a python library that implements data connector, widgets and various helpers. A clean python virtual environment is recommended.
 
 ```
-docker-compose build
+python -m .venv venv
+source .venv/bin/activate
+pip install .
 ```
 
-Execute the docker image.
+This will set up helper along with most dependencies that we use in notebooks. It does not install jupyter notebooks or jupyterlab itself. Installing it's basically just a tool for interacting with our data connector and not a hard requirement. In other words, embedded lib can be used regardless of editor. But we provide a simple requirements file for env setup.
 
 ```
-docker-compose up
+pip install -r requirements.txt
 ```
-
-Copy the jupyter connection string from container log messages and paste into your chosen web browser. Connection string should look like `http://127.0.0.1:8888/lab?token=<GENERATED TOKEN>`.
