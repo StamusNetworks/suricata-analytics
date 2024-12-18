@@ -30,12 +30,12 @@ import yaml
 
 import networkx as nx
 import pandas as pd
-import subprocess
-from IPython.display import display, Markdown
 
 from dotenv import dotenv_values
 from datetime import datetime, timedelta, timezone
 from dateutil import parser
+
+from .helpers import check_str_bool, get_git_root
 
 # Search for scirius env file in user home rather than local folder
 KEY_ENV_IN_HOME = "SCIRIUS_ENVFILE_IN_HOME"
@@ -80,7 +80,7 @@ class RESTSciriusConnector():
             self.__env_file = os.path.join(os.path.expanduser("~"),
                                            self.__env_file)
         elif shutil.which("git") is not None:
-            self.__env_file = os.path.join(getGitRoot(),
+            self.__env_file = os.path.join(get_git_root(),
                                            self.__env_file)
 
         if not os.path.exists(self.__env_file):
@@ -550,68 +550,3 @@ class ESQueryBuilder(RESTSciriusConnector):
             self.__parse_aggs(val, res)
 
         return pd.DataFrame(dict((key, res[key]) for key in self.aggs_cols))
-
-
-def escape(string):
-    '''
-    Escape other elasticsearch reserved characters
-    '''
-    return string. \
-        replace('=', r'\='). \
-        replace('+', r'\+'). \
-        replace('-', r'\-'). \
-        replace('&', r'\&'). \
-        replace('|', r'\|'). \
-        replace('!', r'\!'). \
-        replace('(', r'\('). \
-        replace(')', r'\)'). \
-        replace('{', r'\{'). \
-        replace('}', r'\}'). \
-        replace('[', r'\['). \
-        replace(']', r'\]'). \
-        replace('^', r'\^'). \
-        replace('"', r'\"'). \
-        replace('~', r'\~'). \
-        replace(':', r'\:'). \
-        replace('/', r'\/'). \
-        replace('\\', r'\\')
-
-
-def check_str_bool(val: str) -> bool:
-    if val in ("y", "yes", "t", "true", "on", "1", "enabled", "enable"):
-        return True
-    elif val in ("n", "no", "f", "false", "off", "0", "disabled", "disable"):
-        return False
-    else:
-        raise ValueError("invalid truth value {}".format(val))
-
-
-class Report:
-    COUNTER = 0
-
-    def __init__(self, debug=False) -> None:
-        self.debug = debug
-
-    def output(self, df: pd.DataFrame, column_format=None, size=None):
-        if size is not None:
-            df = df[:size]
-
-        if self.debug:
-            return display(df)
-
-        output = f'{Report.COUNTER}.tex'
-        Report.COUNTER += 1
-
-        if df is not None and len(df):
-            df.to_latex(output, column_format=column_format, index=False, escape=True)
-        else:
-            if os.path.exists(output):
-                os.remove(output)
-            open(output, 'a').close()
-
-        display(Markdown(f'STAMUSINPUT: {output}'))
-
-
-def getGitRoot():
-    return subprocess.Popen(['git', 'rev-parse', '--show-toplevel'],
-                            stdout=subprocess.PIPE).communicate()[0].rstrip().decode('utf-8')

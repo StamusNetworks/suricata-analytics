@@ -14,6 +14,7 @@ import networkx as nx
 
 from ..connectors import RESTSciriusConnector
 from ..viz import draw_nx_graph
+from ..helpers import escape_special_chars
 
 OUTPUT_DEBUG = widgets.Output()
 
@@ -202,7 +203,7 @@ class UniqPivot(object):
             return
 
         key = self.w_fields.value
-        val = [escapeSpecialCharacters(v, "{}:()/") for v in values]
+        val = [escape_special_chars(v, "{}:()/") for v in values]
         val = [f"\"{v}\"" if " " in v else v for v in val]
         val = " OR ".join(val)
 
@@ -307,12 +308,6 @@ class UniqPivot(object):
 
     def display(self):
         display(self.box)
-
-
-def escapeSpecialCharacters(text, characters):
-    for character in characters:
-        text = text.replace(character, '\\' + character)
-    return text
 
 
 def dump_options(dropdown: widgets.Dropdown,

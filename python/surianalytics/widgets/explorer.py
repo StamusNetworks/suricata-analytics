@@ -19,15 +19,12 @@ Reusable widgets
 from ipywidgets.widgets.interaction import display
 
 from ..connectors import RESTSciriusConnector
-from ..datamining import min_max_scaling
+from ..datamining import nx_add_scaled_doc_count, nx_degree_scale
 
 from copy import deepcopy
 
 import ipywidgets as widgets
-
 import pandas as pd
-import numpy as np
-
 import networkx as nx
 import hvplot.networkx as hvnx
 import holoviews as hv
@@ -671,20 +668,3 @@ def checkbox_verify(c: widgets.Checkbox, default=False) -> bool:
 
 def col_cleanup(c: list[str]) -> list:
     return [i for i in c if i not in TIME_COLS and not i.startswith("@")]
-
-
-def nx_add_scaled_doc_count(g: nx.Graph):
-    doc_counts = [attr["doc_count"] for (_, _, attr) in g.edges(data=True)]
-
-    doc_counts = np.log2(doc_counts)
-    doc_counts = min_max_scaling(pd.Series(doc_counts))
-
-    # add scaled doc counts to edges to serve as weights
-    for i, (_, _, attr) in enumerate(g.edges(data=True)):
-        if attr is not None:
-            attr["scaled_doc_count"] = doc_counts[i]
-
-
-def nx_degree_scale(g: nx.Graph) -> pd.Series | pd.DataFrame:
-    degree = [g.degree(n) for n in g.nodes()]
-    return min_max_scaling(pd.Series(degree))
