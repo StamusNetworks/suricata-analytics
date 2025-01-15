@@ -39,6 +39,9 @@ class UniqPivot(object):
     w_flow_id: widgets.SelectMultiple = widgets.SelectMultiple(description="Flow ID", rows=30)
     w_columns: widgets.SelectMultiple = widgets.SelectMultiple(description="Columns", rows=30)
     w_groupby: widgets.Dropdown = widgets.Dropdown(description="Group by")
+    w_groupby_time: widgets.Dropdown = widgets.Dropdown(description="Time bucket",
+                                                        options=["NA", "weekly", "daily", "12 hours", "6 hours", "4 hours", "hourly"],
+                                                        value="NA")
     w_colset: widgets.Dropdown = widgets.Dropdown(description="Columns set")
 
     w_graph_src: widgets.Combobox = widgets.Combobox(description="Graph Source")
@@ -110,7 +113,8 @@ class UniqPivot(object):
         self.intr_values = widgets.interactive(self._intr_gen_query, values=self.w_values)
         self.intr_update_cols = widgets.interactive(self._intr_update_cols, cols=self.w_columns)
         self.intr_limit = widgets.interactive(self._intr_limit_show, limit=self.w_slider_limit)
-        self.intr_select_groupby = widgets.interactive(self._intr_aggregate, group_by=self.w_groupby)
+
+        self.intr_select_groupby = widgets.interactive(self._intr_aggregate, group_by=self.w_groupby, time=self.w_groupby_time)
         self.intr_select_colset = widgets.interactive(self._intr_colset, col_set=self.w_colset)
 
         self.intr_pick_q_base = widgets.interactive(self._intr_update_q_base, value=self.w_q_base_dropdown)
@@ -148,7 +152,7 @@ class UniqPivot(object):
 
         self.box.children = [self.box_query, self.box_interact, self.tab_output]
 
-    def _intr_aggregate(self, group_by: str) -> None:
+    def _intr_aggregate(self, group_by: str, time: str) -> None:
         if group_by in (None, ""):
             return
 
@@ -160,9 +164,25 @@ class UniqPivot(object):
 
         self.output_agg.clear_output()
         with self.output_agg:
+            match time:
+                case "weekly":
+                    grp = [pd.Grouper(freq="1W"), group_by]
+                case "daily":
+                    grp = [pd.Grouper(freq="1d"), group_by]
+                case "12 hours":
+                    grp = [pd.Grouper(freq="12h"), group_by]
+                case "6 hours":
+                    grp = [pd.Grouper(freq="12h"), group_by]
+                case "4 hours":
+                    grp = [pd.Grouper(freq="12h"), group_by]
+                case "hourly":
+                    grp = [pd.Grouper(freq="1h"), group_by]
+                case _:
+                    grp = group_by
+
             df_agg = (
                 self.data
-                .groupby(group_by)
+                .groupby(grp)
                 .agg({k: v for k, v in aggs.items() if k != group_by})
             )
             display(df_agg)
@@ -248,6 +268,9 @@ class UniqPivot(object):
     def _pull_data(self, args: None) -> None:
         self.connector.ignore_basefilter = True
         self.data = self.connector.get_events_df(qfilter=self.q_flow_id)
+        self.data.index = pd.to_datetime(self.data["timestamp"])
+        self.data.index.rename("index", inplace=True)
+
         self.connector.ignore_basefilter = False
 
         self._update_w_columns()
