@@ -42,3 +42,34 @@ def nx_add_scaled_doc_count(g: nx.Graph):
 def nx_degree_scale(g: nx.Graph) -> pd.Series | pd.DataFrame:
     degree = [g.degree(n) for n in g.nodes()]
     return min_max_scaling(pd.Series(degree))
+
+
+def nx_scale_param(g: nx.Graph, value: str, name="kind"):
+    vals = []
+    for k, v in g.nodes(data=True):
+        if v[name] == value:
+            vals.append((k, g.degree(k)))
+    vect = min_max_scaling(pd.Series([v[1] for v in vals]))
+    for i, v in enumerate(vect):
+        g.nodes[vals[i][0]][f"degree_scaled_{name}_{value}"] = v
+
+
+def nx_filter_scaled_src_dest(g: nx.Graph, thresh_src=(0, 1), thresh_dest=(0, 1)):
+    nx_scale_param(g, "source")
+    nx_scale_param(g, "destination")
+    to_remove = set()
+    for k, v in g.nodes(data=True):
+        if v["kind"] == "source" and not _val_in_range(v, "degree_scaled_kind_source", thresh_src[0], thresh_src[1]):
+            to_remove.add(k)
+        elif v["kind"] == "destination" and not _val_in_range(v, "degree_scaled_kind_destination", thresh_dest[0], thresh_dest[1]):
+            to_remove.add(k)
+    for n in to_remove:
+        g.remove_node(n)
+
+    no_connections = [n for n in g.nodes() if g.degree(n) == 0]
+    for n in no_connections:
+        g.remove_node(n)
+
+
+def _val_in_range(d: dict, k: str, floor: float, ceil: float) -> bool:
+    return d[k] >= floor and d[k] <= ceil

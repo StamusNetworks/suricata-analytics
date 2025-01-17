@@ -15,6 +15,7 @@ import networkx as nx
 from ..connectors import RESTSciriusConnector
 from ..viz import draw_nx_graph
 from ..helpers import escape_special_chars
+from ..datamining import nx_filter_scaled_src_dest
 
 OUTPUT_DEBUG = widgets.Output()
 
@@ -46,8 +47,10 @@ class UniqPivot(object):
 
     w_graph_src: widgets.Combobox = widgets.Combobox(description="Graph Source")
     w_graph_dest: widgets.Combobox = widgets.Combobox(description="Graph Destination")
-    w_graph_degree_src: widgets.FloatSlider = widgets.FloatSlider(description="Source Degree", min=0, max=1, value=1)
-    w_graph_degree_dest: widgets.FloatSlider = widgets.FloatSlider(description="Destination Degree", min=0, max=1, value=1)
+    w_graph_degree_src: widgets.FloatRangeSlider = widgets.FloatRangeSlider(description="Source Degree",
+                                                                            min=0, max=1, value=[0, 1], step=0.05)
+    w_graph_degree_dest: widgets.FloatRangeSlider = widgets.FloatRangeSlider(description="Destination Degree",
+                                                                             min=0, max=1, value=[0, 1], step=0.05)
 
     w_button_values: widgets.Button = widgets.Button(description="Update values")
     w_button_flow_id: widgets.Button = widgets.Button(description="Update Flow ID")
@@ -311,6 +314,9 @@ class UniqPivot(object):
             self.graph = self.connector.get_eve_fields_graph_nx(qfilter=self.w_q_values.value,
                                                                 col_src=self.w_graph_src.value,
                                                                 col_dest=self.w_graph_dest.value)
+            nx_filter_scaled_src_dest(g=self.graph,
+                                      thresh_src=self.w_graph_degree_src.value,
+                                      thresh_dest=self.w_graph_degree_dest.value)
             display(draw_nx_graph(self.graph))
 
     def _update_w_columns(self) -> None:
