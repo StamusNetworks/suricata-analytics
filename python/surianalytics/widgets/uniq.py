@@ -46,6 +46,8 @@ class UniqPivot(object):
 
     w_graph_src: widgets.Combobox = widgets.Combobox(description="Graph Source")
     w_graph_dest: widgets.Combobox = widgets.Combobox(description="Graph Destination")
+    w_graph_degree_src: widgets.FloatSlider = widgets.FloatSlider(description="Source Degree", min=0, max=1, value=1)
+    w_graph_degree_dest: widgets.FloatSlider = widgets.FloatSlider(description="Destination Degree", min=0, max=1, value=1)
 
     w_button_values: widgets.Button = widgets.Button(description="Update values")
     w_button_flow_id: widgets.Button = widgets.Button(description="Update Flow ID")
@@ -139,13 +141,21 @@ class UniqPivot(object):
                 self.intr_select_groupby,
                 self.w_button_save_colset,
                 self.intr_select_colset,
-                self.w_graph_src,
-                self.w_graph_dest,
-                self.w_button_graph,
             ]),
         ]
 
-        self.tab_output.children = [self.output_df, self.output_agg, self.output_nx]
+        self.tab_output.children = [
+            self.output_df,
+            self.output_agg,
+            widgets.VBox([
+                widgets.VBox([
+                    widgets.HBox([self.w_graph_src, self.w_graph_degree_src]),
+                    widgets.HBox([self.w_graph_dest, self.w_graph_degree_dest]),
+                    self.w_button_graph,
+                ]),
+                self.output_nx,
+            ])
+        ]
         self.tab_output.set_title(0, "Dataframe")
         self.tab_output.set_title(1, "Aggregate")
         self.tab_output.set_title(2, "Graph")
