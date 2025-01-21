@@ -51,6 +51,8 @@ class UniqPivot(object):
                                                                             min=0, max=1, value=[0, 1], step=0.05)
     w_graph_degree_dest: widgets.FloatRangeSlider = widgets.FloatRangeSlider(description="Destination Degree",
                                                                              min=0, max=1, value=[0, 1], step=0.05)
+    w_graph_resolution_w: widgets.Text = widgets.Text(description="Width", value="1024")
+    w_graph_resolution_h: widgets.Text = widgets.Text(description="Height", value="1024")
 
     w_button_values: widgets.Button = widgets.Button(description="Update values")
     w_button_flow_id: widgets.Button = widgets.Button(description="Update Flow ID")
@@ -152,8 +154,8 @@ class UniqPivot(object):
             self.output_agg,
             widgets.VBox([
                 widgets.VBox([
-                    widgets.HBox([self.w_graph_src, self.w_graph_degree_src]),
-                    widgets.HBox([self.w_graph_dest, self.w_graph_degree_dest]),
+                    widgets.HBox([self.w_graph_src, self.w_graph_degree_src, self.w_graph_resolution_w]),
+                    widgets.HBox([self.w_graph_dest, self.w_graph_degree_dest, self.w_graph_resolution_h]),
                     self.w_button_graph,
                 ]),
                 self.output_nx,
@@ -320,7 +322,9 @@ class UniqPivot(object):
             nx_filter_scaled_src_dest(g=self.graph,
                                       thresh_src=self.w_graph_degree_src.value,
                                       thresh_dest=self.w_graph_degree_dest.value)
-            display(draw_nx_graph(self.graph))
+            display(draw_nx_graph(g=self.graph,
+                                  width=int(self.w_graph_resolution_w.value),
+                                  height=int(self.w_graph_resolution_h.value)))
 
     def _update_w_columns(self) -> None:
         if self.columns in (None, [], ()):
