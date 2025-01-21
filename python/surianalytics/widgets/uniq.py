@@ -243,7 +243,10 @@ class UniqPivot(object):
         if len(values) > 1:
             val = f"({val})"
 
-        self.w_q_values.value = f"{key}: {val}"
+        if key in ("", None) and val in ("", None):
+            self.w_q_values.value = "*"
+        else:
+            self.w_q_values.value = f"{key}: {val}"
 
     def _intr_build_flow_id_q(self, values: list[int]) -> None:
         if values in (None, []):
