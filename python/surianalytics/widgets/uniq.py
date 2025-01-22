@@ -48,9 +48,9 @@ class UniqPivot(object):
     w_graph_src: widgets.Combobox = widgets.Combobox(description="Graph Source")
     w_graph_dest: widgets.Combobox = widgets.Combobox(description="Graph Destination")
     w_graph_degree_src: widgets.FloatRangeSlider = widgets.FloatRangeSlider(description="Source Degree",
-                                                                            min=0, max=1, value=[0, 1], step=0.05)
+                                                                            min=0, max=1, value=[0, 1], step=0.01)
     w_graph_degree_dest: widgets.FloatRangeSlider = widgets.FloatRangeSlider(description="Destination Degree",
-                                                                             min=0, max=1, value=[0, 1], step=0.05)
+                                                                             min=0, max=1, value=[0, 1], step=0.01)
     w_graph_resolution_w: widgets.Text = widgets.Text(description="Width", value="1024")
     w_graph_resolution_h: widgets.Text = widgets.Text(description="Height", value="1024")
 
