@@ -51,17 +51,25 @@ def nx_scale_param(g: nx.Graph, value: str, name="kind"):
             vals.append((k, g.degree(k)))
     vect = min_max_scaling(pd.Series([v[1] for v in vals]))
     for i, v in enumerate(vect):
-        g.nodes[vals[i][0]][f"degree_scaled_{name}_{value}"] = v
+        g.nodes[vals[i][0]][f"degree_{name}_{value}_scaled"] = v
 
 
 def nx_filter_scaled_src_dest(g: nx.Graph, thresh_src=(0, 1), thresh_dest=(0, 1)):
     nx_scale_param(g, "source")
     nx_scale_param(g, "destination")
+
+    for e in g.edges(data=True):
+        e[2]["degree_kind_source"] = g.degree(e[0])
+        e[2]["degree_kind_destination"] = g.degree(e[1])
+
+        e[2]["degree_kind_source_scaled"] = g.nodes[e[0]]["degree_kind_source_scaled"]
+        e[2]["degree_kind_destination_scaled"] = g.nodes[e[1]]["degree_kind_destination_scaled"]
+
     to_remove = set()
     for k, v in g.nodes(data=True):
-        if v["kind"] == "source" and not _val_in_range(v, "degree_scaled_kind_source", thresh_src[0], thresh_src[1]):
+        if v["kind"] == "source" and not _val_in_range(v, "degree_kind_source_scaled", thresh_src[0], thresh_src[1]):
             to_remove.add(k)
-        elif v["kind"] == "destination" and not _val_in_range(v, "degree_scaled_kind_destination", thresh_dest[0], thresh_dest[1]):
+        elif v["kind"] == "destination" and not _val_in_range(v, "degree_kind_destination_scaled", thresh_dest[0], thresh_dest[1]):
             to_remove.add(k)
     for n in to_remove:
         g.remove_node(n)
