@@ -318,7 +318,9 @@ class UniqPivot(object):
         with self.output_nx:
             self.graph = self.connector.get_eve_fields_graph_nx(qfilter=self.w_q_values.value,
                                                                 col_src=self.w_graph_src.value,
-                                                                col_dest=self.w_graph_dest.value)
+                                                                col_dest=self.w_graph_dest.value,
+                                                                size_src=1000,
+                                                                size_dest=1000)
             nx_filter_scaled_src_dest(g=self.graph,
                                       thresh_src=self.w_graph_degree_src.value,
                                       thresh_dest=self.w_graph_degree_dest.value)
