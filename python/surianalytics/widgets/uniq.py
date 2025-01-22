@@ -33,6 +33,7 @@ class UniqPivot(object):
     fields: list = []
     data: pd.DataFrame = pd.DataFrame()
     graph: nx.Graph = nx.Graph()
+    graph_df: pd.DataFrame = pd.DataFrame()
 
     w_limit: widgets.IntSlider = widgets.IntSlider(min=10, max=1000, description="Limit")
     w_fields: widgets.Combobox = widgets.Combobox(description="Fields")
@@ -87,6 +88,7 @@ class UniqPivot(object):
     output_df: widgets.Output = widgets.Output()
     output_agg: widgets.Output = widgets.Output()
     output_nx: widgets.Output = widgets.Output()
+    output_nx_edgelist: widgets.Output = widgets.Output()
 
     box_query: widgets.Box = widgets.VBox()
     box_interact: widgets.Box = widgets.HBox()
@@ -159,11 +161,13 @@ class UniqPivot(object):
                     self.w_button_graph,
                 ]),
                 self.output_nx,
-            ])
+            ]),
+            self.output_nx_edgelist,
         ]
         self.tab_output.set_title(0, "Dataframe")
         self.tab_output.set_title(1, "Aggregate")
         self.tab_output.set_title(2, "Graph")
+        self.tab_output.set_title(3, "Graph Edgelist")
 
         self.box.children = [self.box_query, self.box_interact, self.tab_output]
 
@@ -327,6 +331,12 @@ class UniqPivot(object):
             display(draw_nx_graph(g=self.graph,
                                   width=int(self.w_graph_resolution_w.value),
                                   height=int(self.w_graph_resolution_h.value)))
+
+        self.output_nx_edgelist.clear_output()
+        with self.output_nx_edgelist:
+            self.graph_df = nx.to_pandas_edgelist(self.graph)
+            display(self.graph_df.describe())
+            display(self.graph_df)
 
     def _update_w_columns(self) -> None:
         if self.columns in (None, [], ()):
