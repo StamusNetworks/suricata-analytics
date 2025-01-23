@@ -159,10 +159,11 @@ class UniqPivot(object):
             self.output_agg,
             widgets.VBox([
                 widgets.VBox([
-                    widgets.HBox([self.w_graph_src, self.w_graph_degree_src, self.w_graph_resolution_w, self.w_graph_size_src]),
-                    widgets.HBox([self.w_graph_dest, self.w_graph_degree_dest, self.w_graph_resolution_h, self.w_graph_size_dest]),
-                    self.w_button_graph,
+                    widgets.HBox([self.w_graph_src, self.w_graph_degree_src, self.w_graph_size_src]),
+                    widgets.HBox([self.w_graph_dest, self.w_graph_degree_dest, self.w_graph_size_dest]),
                 ]),
+                widgets.VBox([self.w_graph_resolution_w, self.w_graph_resolution_h]),
+                self.w_button_graph,
                 self.output_nx,
             ]),
             self.output_nx_edgelist,
@@ -321,23 +322,40 @@ class UniqPivot(object):
             )
 
     def _build_graph(self, args: None) -> None:
+
         self.output_nx.clear_output()
         with self.output_nx:
             self.graph = self.connector.get_eve_fields_graph_nx(qfilter=self.w_q_values.value,
                                                                 col_src=self.w_graph_src.value,
                                                                 col_dest=self.w_graph_dest.value,
-                                                                size_src=self.w_graph_size_src,
-                                                                size_dest=self.w_graph_size_dest)
+                                                                size_src=self.w_graph_size_src.value,
+                                                                size_dest=self.w_graph_size_dest.value)
             nx_filter_scaled_src_dest(g=self.graph,
                                       thresh_src=self.w_graph_degree_src.value,
                                       thresh_dest=self.w_graph_degree_dest.value)
+
             display(draw_nx_graph(g=self.graph,
                                   width=int(self.w_graph_resolution_w.value),
                                   height=int(self.w_graph_resolution_h.value)))
 
+        self._build_graph_edgelist(args)
+
+    def _build_graph_edgelist(self, args: None):
         self.output_nx_edgelist.clear_output()
         with self.output_nx_edgelist:
             self.graph_df = nx.to_pandas_edgelist(self.graph)
+
+            # FIXME: this should be a separate function
+            quantiles = [0, 0.1, 0.25, 0.4, 0.5, 0.6, 0.75, 0.9, 1]
+            df_quantile = pd.DataFrame()
+            df_quantile[self.w_graph_src.value] = self.graph_df.degree_kind_source_scaled.quantile(quantiles)
+            df_quantile[self.w_graph_dest.value] = self.graph_df.degree_kind_destination_scaled.quantile(quantiles)
+
+            pd.options.plotting.backend = 'holoviews'
+            display(
+                df_quantile
+                .plot(kind="line")
+            )
             display(self.graph_df.describe())
             display(self.graph_df)
 
