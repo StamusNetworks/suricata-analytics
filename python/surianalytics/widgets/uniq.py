@@ -52,6 +52,9 @@ class UniqPivot(object):
                                                                             min=0, max=1, value=[0, 1], step=0.01)
     w_graph_degree_dest: widgets.FloatRangeSlider = widgets.FloatRangeSlider(description="Destination Degree",
                                                                              min=0, max=1, value=[0, 1], step=0.01)
+    w_graph_size_src: widgets.IntSlider = widgets.IntSlider(description="Source agg size", min=50, max=1000, value=100)
+    w_graph_size_dest: widgets.IntSlider = widgets.IntSlider(description="Destination agg size", min=50, max=1000, value=100)
+
     w_graph_resolution_w: widgets.Text = widgets.Text(description="Width", value="1024")
     w_graph_resolution_h: widgets.Text = widgets.Text(description="Height", value="1024")
 
@@ -156,8 +159,8 @@ class UniqPivot(object):
             self.output_agg,
             widgets.VBox([
                 widgets.VBox([
-                    widgets.HBox([self.w_graph_src, self.w_graph_degree_src, self.w_graph_resolution_w]),
-                    widgets.HBox([self.w_graph_dest, self.w_graph_degree_dest, self.w_graph_resolution_h]),
+                    widgets.HBox([self.w_graph_src, self.w_graph_degree_src, self.w_graph_resolution_w, self.w_graph_size_src]),
+                    widgets.HBox([self.w_graph_dest, self.w_graph_degree_dest, self.w_graph_resolution_h, self.w_graph_size_dest]),
                     self.w_button_graph,
                 ]),
                 self.output_nx,
@@ -323,8 +326,8 @@ class UniqPivot(object):
             self.graph = self.connector.get_eve_fields_graph_nx(qfilter=self.w_q_values.value,
                                                                 col_src=self.w_graph_src.value,
                                                                 col_dest=self.w_graph_dest.value,
-                                                                size_src=1000,
-                                                                size_dest=1000)
+                                                                size_src=self.w_graph_size_src,
+                                                                size_dest=self.w_graph_size_dest)
             nx_filter_scaled_src_dest(g=self.graph,
                                       thresh_src=self.w_graph_degree_src.value,
                                       thresh_dest=self.w_graph_degree_dest.value)
