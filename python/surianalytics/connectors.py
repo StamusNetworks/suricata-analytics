@@ -349,9 +349,7 @@ class RESTSciriusConnector():
 
         self.last_request = url
         return requests.get(url,
-                            headers={
-                                "Authorization": "Token {}".format(self.token)
-                            },
+                            headers={"Authorization": "Token {}".format(self.token)},
                             verify=self.tls_verify)
 
     def _host(self) -> str:
