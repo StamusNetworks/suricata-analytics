@@ -48,3 +48,22 @@ def escape_special_chars(text, characters):
     for character in characters:
         text = text.replace(character, '\\' + character)
     return text
+
+
+def generate_aggs_terms(terms: dict | list | str, size: int) -> dict:
+    agg = {}
+    if isinstance(terms, dict):
+        for term, values in terms.items():
+            agg[term] = agg_term(term, size)
+            agg[term]["aggs"] = generate_aggs_terms(values, size)
+    elif isinstance(terms, list):
+        for term in terms:
+            agg[term] = agg_term(term, size)
+    elif isinstance(terms, str):
+        agg[terms] = agg_term(terms, size)
+
+    return agg
+
+
+def agg_term(term: str, size: int) -> dict:
+    return {"terms": {"field": term, "size": size}}
