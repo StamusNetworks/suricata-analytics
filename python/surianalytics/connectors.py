@@ -328,7 +328,8 @@ class RESTSciriusConnector():
         # use relative time if delta is enabled
         if self.time_delta is not None:
             self._update_timestamps()
-        elif self.to_date is not None and self.to_date is not None:
+
+        if self.to_date is not None and self.to_date is not None:
             qParams = {**self._time_params(), **qParams}
         else:
             raise ValueError("timestamps not set up properly")
