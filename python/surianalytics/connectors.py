@@ -58,6 +58,7 @@ class RESTSciriusConnector():
     """
     last_request = None
     last_aggs = None
+    last_response = None
 
     page_size = 1000
 
@@ -231,10 +232,10 @@ class RESTSciriusConnector():
         return df
 
     def get_data(self, api: str, qParams=None):
-        resp = self.__get(api, qParams)
-        if resp.status_code not in (200, 302):
-            raise requests.RequestException(resp)
-        return json.loads(resp.text)
+        self.last_response = self.__get(api, qParams)
+        if self.last_response.status_code not in (200, 302):
+            raise requests.RequestException(self.last_response)
+        return json.loads(self.last_response.text)
 
     def set_from_date(self, from_date):
         if isinstance(from_date, str):
